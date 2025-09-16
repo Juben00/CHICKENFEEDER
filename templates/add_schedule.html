@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Add Schedule - Chicken Feed Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h2">
+            <i class="fas fa-plus me-2"></i>Add Feed Schedule
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" id="schedule-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Schedule Name</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               placeholder="e.g., Morning Feed, Evening Feed" required>
+                        <div class="form-text">Give your schedule a descriptive name</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="feed_time" class="form-label">Feed Time</label>
+                        <input type="time" class="form-control" id="feed_time" name="feed_time" required>
+                        <div class="form-text">Time when feed should be dispensed daily</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="amount_grams" class="form-label">Amount (grams)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="amount_grams" name="amount_grams" 
+                                   min="1" max="1000" value="50" required>
+                            <span class="input-group-text">grams</span>
+                        </div>
+                        <div class="form-text">Amount of feed to dispense (1-1000 grams)</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" checked>
+                            <label class="form-check-label" for="is_active">
+                                <strong>Activate schedule immediately</strong>
+                            </label>
+                            <div class="form-text">Uncheck to create an inactive schedule</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Create Schedule
+                        </button>
+                        <a href="{{ url_for('schedules') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                        <button type="button" class="btn btn-outline-info" onclick="testAmount()">
+                            <i class="fas fa-play me-1"></i>Test Amount
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Preview Card -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-eye me-2"></i>Schedule Preview
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-clock fa-2x text-primary me-3"></i>
+                    <div>
+                        <h5 class="mb-0" id="preview-name">Schedule Name</h5>
+                        <small class="text-muted" id="preview-time">--:--</small>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Amount:</span>
+                    <span class="badge bg-primary" id="preview-amount">-- grams</span>
+                </div>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Status:</span>
+                    <span class="badge bg-success" id="preview-status">Active</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tips Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Feeding Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <small>Feed chickens 2-3 times daily</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <small>Typical serving: 30-50g per chicken</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <small>Morning feeds should be larger</small>
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <small>Consistent timing improves health</small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Common Schedules -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-star me-2"></i>Quick Templates
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" 
+                            onclick="applyTemplate('Morning Feed', '07:00', 80)">
+                        Morning (7:00 AM - 80g)
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" 
+                            onclick="applyTemplate('Afternoon Feed', '14:00', 50)">
+                        Afternoon (2:00 PM - 50g)
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" 
+                            onclick="applyTemplate('Evening Feed', '18:30', 60)">
+                        Evening (6:30 PM - 60g)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Real-time preview updates
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    const timeInput = document.getElementById('feed_time');
+    const amountInput = document.getElementById('amount_grams');
+    const activeInput = document.getElementById('is_active');
+    
+    function updatePreview() {
+        document.getElementById('preview-name').textContent = nameInput.value || 'Schedule Name';
+        document.getElementById('preview-time').textContent = timeInput.value || '--:--';
+        document.getElementById('preview-amount').textContent = (amountInput.value || '--') + ' grams';
+        document.getElementById('preview-status').textContent = activeInput.checked ? 'Active' : 'Inactive';
+        document.getElementById('preview-status').className = 'badge ' + (activeInput.checked ? 'bg-success' : 'bg-secondary');
+    }
+    
+    nameInput.addEventListener('input', updatePreview);
+    timeInput.addEventListener('change', updatePreview);
+    amountInput.addEventListener('input', updatePreview);
+    activeInput.addEventListener('change', updatePreview);
+});
+
+function applyTemplate(name, time, amount) {
+    document.getElementById('name').value = name;
+    document.getElementById('feed_time').value = time;
+    document.getElementById('amount_grams').value = amount;
+    
+    // Trigger preview update
+    document.getElementById('name').dispatchEvent(new Event('input'));
+    document.getElementById('feed_time').dispatchEvent(new Event('change'));
+    document.getElementById('amount_grams').dispatchEvent(new Event('input'));
+}
+
+function testAmount() {
+    const amount = document.getElementById('amount_grams').value;
+    if (!amount || amount < 1 || amount > 1000) {
+        alert('Please enter a valid amount (1-1000 grams)');
+        return;
+    }
+    
+    if (confirm(`Test dispense ${amount}g of feed now?`)) {
+        dispenseNow(amount, 'Testing schedule amount');
+    }
+}
+
+// Form validation
+document.getElementById('schedule-form').addEventListener('submit', function(e) {
+    const amount = document.getElementById('amount_grams').value;
+    if (amount < 1 || amount > 1000) {
+        e.preventDefault();
+        alert('Amount must be between 1 and 1000 grams');
+        return;
+    }
+    
+    const time = document.getElementById('feed_time').value;
+    if (!time) {
+        e.preventDefault();
+        alert('Please select a feed time');
+        return;
+    }
+});
+</script>
+{% endblock %}

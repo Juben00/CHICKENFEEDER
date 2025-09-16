@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Logs - Chicken Feed Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h2">
+            <i class="fas fa-history me-2"></i>Dispense Logs
+        </h1>
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label for="filter-type" class="form-label">Type</label>
+                <select class="form-select" id="filter-type">
+                    <option value="">All Types</option>
+                    <option value="manual">Manual</option>
+                    <option value="scheduled">Scheduled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filter-status" class="form-label">Status</label>
+                <select class="form-select" id="filter-status">
+                    <option value="">All Status</option>
+                    <option value="success">Success</option>
+                    <option value="failure">Failure</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filter-date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="filter-date">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" onclick="applyFilters()">
+                        <i class="fas fa-filter me-1"></i>Filter
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="card">
+    <div class="card-body">
+        {% if logs.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>
+                            <a href="#" onclick="sortTable('timestamp')" class="text-decoration-none">
+                                Timestamp <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" onclick="sortTable('type')" class="text-decoration-none">
+                                Type <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" onclick="sortTable('amount')" class="text-decoration-none">
+                                Amount <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" onclick="sortTable('status')" class="text-decoration-none">
+                                Status <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>Schedule/Error</th>
+                        <th>User</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-table-body">
+                    {% for log in logs.items %}
+                    <tr class="log-row" 
+                        data-type="{{ log.trigger_type }}" 
+                        data-status="{{ log.status }}"
+                        data-date="{{ log.timestamp.strftime('%Y-%m-%d') }}">
+                        <td>
+                            <div>
+                                <strong>{{ log.timestamp.strftime('%Y-%m-%d') }}</strong>
+                            </div>
+                            <small class="text-muted">{{ log.timestamp.strftime('%H:%M:%S') }}</small>
+                        </td>
+                        <td>
+                            {% if log.trigger_type == 'manual' %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-hand-pointer me-1"></i>Manual
+                                </span>
+                            {% else %}
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-clock me-1"></i>Scheduled
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ log.amount_grams }}g</span>
+                        </td>
+                        <td>
+                            {% if log.status == 'success' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check me-1"></i>Success
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times me-1"></i>Failed
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.schedule %}
+                                <div>
+                                    <strong>{{ log.schedule.name }}</strong>
+                                </div>
+                                <small class="text-muted">{{ log.schedule.feed_time.strftime('%H:%M') }}</small>
+                            {% elif log.error_message %}
+                                <div class="text-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    <small>{{ log.error_message[:100] }}{% if log.error_message|length > 100 %}...{% endif %}</small>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.user %}
+                                <small>{{ log.user.username }}</small>
+                            {% else %}
+                                <small class="text-muted">System</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if logs.pages > 1 %}
+        <nav aria-label="Logs pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if logs.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('logs', page=logs.prev_num) }}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in logs.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != logs.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('logs', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('logs', page=logs.next_num) }}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-clipboard-list fa-4x mb-3"></i>
+            <h4>No Logs Yet</h4>
+            <p class="mb-4">Dispense logs will appear here once you start feeding</p>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary Stats -->
+{% if logs.items %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ logs.total }}</h3>
+                <small>Total Logs</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ logs.items|selectattr('status', 'equalto', 'success')|list|length }}</h3>
+                <small>Successful (this page)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ logs.items|selectattr('status', 'equalto', 'failure')|list|length }}</h3>
+                <small>Failed (this page)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ logs.items|sum(attribute='amount_grams') }}g</h3>
+                <small>Total Feed (this page)</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentSort = { column: 'timestamp', direction: 'desc' };
+
+function applyFilters() {
+    const typeFilter = document.getElementById('filter-type').value;
+    const statusFilter = document.getElementById('filter-status').value;
+    const dateFilter = document.getElementById('filter-date').value;
+    
+    const rows = document.querySelectorAll('.log-row');
+    
+    rows.forEach(row => {
+        let show = true;
+        
+        if (typeFilter && row.dataset.type !== typeFilter) {
+            show = false;
+        }
+        
+        if (statusFilter && row.dataset.status !== statusFilter) {
+            show = false;
+        }
+        
+        if (dateFilter && row.dataset.date !== dateFilter) {
+            show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+    
+    updateVisibleCount();
+}
+
+function clearFilters() {
+    document.getElementById('filter-type').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-date').value = '';
+    
+    document.querySelectorAll('.log-row').forEach(row => {
+        row.style.display = '';
+    });
+    
+    updateVisibleCount();
+}
+
+function updateVisibleCount() {
+    const visibleRows = document.querySelectorAll('.log-row:not([style*="display: none"])');
+    const totalRows = document.querySelectorAll('.log-row');
+    
+    // You could add a status message here showing filtered results
+}
+
+function sortTable(column) {
+    // This would implement client-side sorting
+    // For a production app, you'd want server-side sorting with URL parameters
+    console.log(`Sorting by ${column}`);
+}
+
+// Auto-apply date filter to today
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    // Uncomment to auto-filter to today:
+    // document.getElementById('filter-date').value = today;
+    // applyFilters();
+});
+</script>
+{% endblock %}

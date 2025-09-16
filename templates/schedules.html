@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Schedules - Chicken Feed Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h2">
+            <i class="fas fa-clock me-2"></i>Feed Schedules
+        </h1>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('add_schedule') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Add Schedule
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if schedules %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Name</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for schedule in schedules %}
+                    <tr id="schedule-{{ schedule.id }}">
+                        <td>
+                            <i class="fas fa-clock me-1"></i>
+                            {{ schedule.feed_time.strftime('%H:%M') }}
+                        </td>
+                        <td>
+                            <strong>{{ schedule.name }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ schedule.amount_grams }}g</span>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" 
+                                       id="toggle-{{ schedule.id }}"
+                                       {% if schedule.is_active %}checked{% endif %}
+                                       onchange="toggleSchedule({{ schedule.id }})">
+                                <label class="form-check-label" for="toggle-{{ schedule.id }}">
+                                    <span id="status-text-{{ schedule.id }}">
+                                        {% if schedule.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {{ schedule.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" 
+                                        onclick="testSchedule({{ schedule.id }}, {{ schedule.amount_grams }})"
+                                        title="Test this schedule">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" 
+                                        onclick="deleteSchedule({{ schedule.id }}, '{{ schedule.name }}')"
+                                        title="Delete schedule">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-calendar-times fa-4x mb-3"></i>
+            <h4>No Schedules Yet</h4>
+            <p class="mb-4">Create your first feeding schedule to automate chicken feeding</p>
+            <a href="{{ url_for('add_schedule') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus me-2"></i>Create First Schedule
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Schedule Info Card -->
+<div class="row mt-4">
+    <div class="col-lg-8">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-info-circle me-2"></i>Schedule Information
+                </h6>
+                <ul class="mb-0">
+                    <li>Schedules run automatically every day at the specified time</li>
+                    <li>You can temporarily disable schedules using the toggle switch</li>
+                    <li>Use the test button to immediately dispense feed for testing</li>
+                    <li>All dispense actions are logged for tracking</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-lightbulb fa-2x text-primary mb-2"></i>
+                <h6 class="card-title">Quick Tip</h6>
+                <p class="card-text small">
+                    Create multiple schedules throughout the day for optimal feeding patterns.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSchedule(scheduleId) {
+    const toggle = document.getElementById(`toggle-${scheduleId}`);
+    const statusText = document.getElementById(`status-text-${scheduleId}`);
+    
+    fetch(`/schedules/${scheduleId}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusText.textContent = data.is_active ? 'Active' : 'Inactive';
+            showAlert(
+                data.is_active ? 'Schedule activated' : 'Schedule deactivated', 
+                'success'
+            );
+        } else {
+            // Revert toggle state
+            toggle.checked = !toggle.checked;
+            showAlert('Failed to update schedule', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toggle.checked = !toggle.checked;
+        showAlert('Error updating schedule', 'danger');
+    });
+}
+
+function testSchedule(scheduleId, amount) {
+    if (!confirm(`Test dispense ${amount}g of feed now?`)) {
+        return;
+    }
+    
+    dispenseNow(amount, `Testing schedule #${scheduleId}`);
+}
+
+function deleteSchedule(scheduleId, scheduleName) {
+    if (!confirm(`Delete schedule "${scheduleName}"? This cannot be undone.`)) {
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/schedules/${scheduleId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('main').insertBefore(alertDiv, document.querySelector('main').firstChild);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}
