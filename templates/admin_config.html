@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Feed Ratio Config{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Feed-to-Gram Ratio Configuration</h2>
+    <form method="post">
+        <div class="mb-3">
+            <label for="pellets" class="form-label">Pellets</label>
+            <input type="number" class="form-control" id="pellets" name="pellets" value="{{ ratio.pellets }}" min="1" required>
+        </div>
+        <div class="mb-3">
+            <label for="grams" class="form-label">Grams</label>
+            <input type="number" class="form-control" id="grams" name="grams" value="{{ ratio.grams }}" min="0.1" step="0.1" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Update Ratio</button>
+    </form>
+</div>
+{% endblock %}

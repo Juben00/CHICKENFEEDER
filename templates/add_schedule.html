@@ -33,10 +33,12 @@
                         <label for="amount_grams" class="form-label">Amount (grams)</label>
                         <div class="input-group">
                             <input type="number" class="form-control" id="amount_grams" name="amount_grams" 
-                                   min="1" max="1000" value="50" required>
+                                   min="20" max="150" value="30" required>
                             <span class="input-group-text">grams</span>
                         </div>
-                        <div class="form-text">Amount of feed to dispense (1-1000 grams)</div>
+                        <div class="form-text">
+                            Amount of feed to dispense (20-150 grams, for 1-5 chickens, 20-30g each)
+                        </div>
                     </div>
                     
                     <div class="mb-4">
@@ -111,7 +113,7 @@
                     </li>
                     <li class="mb-2">
                         <i class="fas fa-check text-success me-2"></i>
-                        <small>Typical serving: 30-50g per chicken</small>
+                        <small>Typical serving: 20-30g per chicken</small>
                     </li>
                     <li class="mb-2">
                         <i class="fas fa-check text-success me-2"></i>
@@ -135,16 +137,20 @@
             <div class="card-body">
                 <div class="d-grid gap-2">
                     <button class="btn btn-outline-primary btn-sm" 
-                            onclick="applyTemplate('Morning Feed', '07:00', 80)">
-                        Morning (7:00 AM - 80g)
+                            onclick="applyTemplate('Morning Feed (5 chickens)', '07:00', 120)">
+                        Morning (7:00 AM - 120g, 5 chickens)
                     </button>
                     <button class="btn btn-outline-primary btn-sm" 
-                            onclick="applyTemplate('Afternoon Feed', '14:00', 50)">
-                        Afternoon (2:00 PM - 50g)
+                            onclick="applyTemplate('Afternoon Feed (5 chickens)', '14:00', 100)">
+                        Afternoon (2:00 PM - 100g, 5 chickens)
                     </button>
                     <button class="btn btn-outline-primary btn-sm" 
-                            onclick="applyTemplate('Evening Feed', '18:30', 60)">
-                        Evening (6:30 PM - 60g)
+                            onclick="applyTemplate('Evening Feed (5 chickens)', '18:30', 130)">
+                        Evening (6:30 PM - 130g, 5 chickens)
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" 
+                            onclick="applyTemplate('Full Feeder (5 chickens)', '12:00', 150)">
+                        Full Feeder (12:00 PM - 150g, 5 chickens)
                     </button>
                 </div>
             </div>
@@ -202,9 +208,9 @@ function testAmount() {
 // Form validation
 document.getElementById('schedule-form').addEventListener('submit', function(e) {
     const amount = document.getElementById('amount_grams').value;
-    if (amount < 1 || amount > 1000) {
+    if (amount < 20 || amount > 150) {
         e.preventDefault();
-        alert('Amount must be between 1 and 1000 grams');
+        alert('Amount must be between 20 and 150 grams (for 1-5 chickens, 20-30g each)');
         return;
     }
     
