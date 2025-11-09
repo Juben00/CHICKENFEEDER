@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from scheduler import start_scheduler
 from datetime import datetime, time, timedelta
 import os
 import requests
@@ -9,13 +10,16 @@ import json
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import atexit
+# Load environment variables from .env
+from dotenv import load_dotenv
+load_dotenv()
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
-    app.config['SECRET_KEY'] = 'your-secret-key'
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'secret_key')
     app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'chickenfeeder.sqlite')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -65,6 +69,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(120), nullable=False)
     is_admin = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    iot_device_url = db.Column(db.String(255), nullable=True)  # IoT device association
 
 class FeedSchedule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -95,28 +100,34 @@ def inject_datetime():
     return {'datetime': datetime}
 
 # IoT Communication Functions
-def communicate_with_iot_device(amount_grams):
+
+def communicate_with_iot_device(amount_grams, device_url=None):
     """
     Communicate with IoT device to dispense feed
     This is a placeholder - implement based on your IoT device protocol
     """
     try:
-        # Example HTTP communication (adjust based on your IoT device)
-        # iot_device_url = "http://192.168.1.100:8080/dispense"
-        # response = requests.post(iot_device_url, json={'amount': amount_grams}, timeout=10)
-        
-        # For demonstration, we'll simulate success
-        print(f"Dispensing {amount_grams}g of feed to IoT device")
+        if device_url:
+            # Example HTTP communication (adjust based on your IoT device)
+            print(f"Dispensing {amount_grams}g of feed to IoT device at {device_url}")
+            # response = requests.post(device_url, json={'amount': amount_grams}, timeout=10)
+        else:
+            print(f"Dispensing {amount_grams}g of feed to IoT device (no URL set)")
         return True, None
     except Exception as e:
         return False, str(e)
+
 
 def dispense_feed(amount_grams, trigger_type='manual', schedule_id=None, user_id=None):
     """
     Core function to dispense feed and log the action
     """
-    success, error_message = communicate_with_iot_device(amount_grams)
-    
+    device_url = None
+    if user_id:
+        user = db.session.get(User, user_id)
+        if user:
+            device_url = user.iot_device_url
+    success, error_message = communicate_with_iot_device(amount_grams, device_url)
     # Log the dispense action
     log_entry = DispenseLog(
         amount_grams=amount_grams,
@@ -126,28 +137,26 @@ def dispense_feed(amount_grams, trigger_type='manual', schedule_id=None, user_id
         error_message=error_message,
         triggered_by=user_id
     )
-    
     db.session.add(log_entry)
     db.session.commit()
-    
     return success, error_message, log_entry.id
 
 def scheduled_feed_task(schedule_id):
     """
     Task executed by scheduler for automatic feeding
     """
-    schedule = db.session.get(FeedSchedule, schedule_id)
-    if schedule and schedule.is_active:
-        success, error_message, log_id = dispense_feed(
-            amount_grams=schedule.amount_grams,
-            trigger_type='scheduled',
-            schedule_id=schedule_id,
-            user_id=schedule.created_by
-        )
-        
-        if not success:
-            # Here you could implement email/SMS notifications
-            print(f"Scheduled feed failed: {error_message}")
+    with app.app_context():
+        schedule = db.session.get(FeedSchedule, schedule_id)
+        if schedule and schedule.is_active:
+            success, error_message, log_id = dispense_feed(
+                amount_grams=schedule.amount_grams,
+                trigger_type='scheduled',
+                schedule_id=schedule_id,
+                user_id=schedule.created_by
+            )
+            if not success:
+                # Here you could implement email/SMS notifications
+                print(f"Scheduled feed failed: {error_message}")
 
 # Routes
 @app.route('/')
@@ -187,6 +196,7 @@ def register():
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
+        iot_device_url = request.form.get('iot_device_url', '').strip()
         if not username or not email or not password:
             flash('All fields are required.')
             return redirect(url_for('register'))
@@ -201,7 +211,8 @@ def register():
             username=username,
             email=email,
             password_hash=generate_password_hash(password),
-            is_admin=False
+            is_admin=False,
+            iot_device_url=iot_device_url
         )
         db.session.add(user)
         db.session.commit()
@@ -234,6 +245,7 @@ def admin_create_user():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         is_admin = bool(request.form.get('is_admin'))
+        iot_device_url = request.form.get('iot_device_url', '').strip()
         if not username or not email or not password:
             flash('Username, email and password are required.')
             return redirect(url_for('admin_create_user'))
@@ -247,7 +259,8 @@ def admin_create_user():
             username=username,
             email=email,
             password_hash=generate_password_hash(password),
-            is_admin=is_admin
+            is_admin=is_admin,
+            iot_device_url=iot_device_url
         )
         db.session.add(u)
         db.session.commit()
@@ -269,6 +282,7 @@ def admin_edit_user(user_id):
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', None)
         is_admin = bool(request.form.get('is_admin'))
+        iot_device_url = request.form.get('iot_device_url', '').strip()
         # uniqueness checks (exclude this user)
         if username and username != user.username and User.query.filter_by(username=username).first():
             flash('Username already taken.')
@@ -281,6 +295,8 @@ def admin_edit_user(user_id):
         if email:
             user.email = email
         user.is_admin = is_admin
+        if iot_device_url:
+            user.iot_device_url = iot_device_url
         if password:
             user.password_hash = generate_password_hash(password)
         db.session.commit()
@@ -465,6 +481,7 @@ def manual_dispense():
             'success': False,
             'error': error_message
         }), 500
+        start_scheduler()
 
 @app.route('/logs')
 @login_required
