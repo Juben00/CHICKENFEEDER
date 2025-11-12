@@ -578,15 +578,6 @@ def admin_feed_ratio():
             flash('Invalid input.', 'danger')
     return render_template('admin/feed_ratio.html', ratio=ratio)
 
-# The endpoint that accepts the image to be processed by the model for feed counting is:
-# POST /api/predict_feed
-
-# It is defined in routes/api.py as:
-# @api_bp.route('/predict_feed', methods=['POST'])
-# def predict_feed():
-#     # Accepts an image file, runs inference, and returns the predicted pellet count as JSON
-#     pass
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

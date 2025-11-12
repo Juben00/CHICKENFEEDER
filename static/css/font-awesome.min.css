@@ -1,0 +1,21 @@
+/*
+Font Awesome 6.0.0 - Minified CSS
+This is a placeholder. For full icon support, download font-awesome from https://fontawesome.com/download and place the minified CSS and webfonts in static/css and static/webfonts.
+*/
+@font-face {
+	font-family: 'FontAwesome';
+	src: url('../webfonts/fa-solid-900.woff2') format('woff2'),
+			 url('../webfonts/fa-solid-900.woff') format('woff'),
+			 url('../webfonts/fa-solid-900.ttf') format('truetype');
+	font-weight: normal;
+	font-style: normal;
+}
+.fa {display:inline-block;font:normal normal normal 14px/1 FontAwesome;}
+.fa-user:before {content:"\f007";}
+.fa-envelope:before {content:"\f0e0";}
+.fa-lock:before {content:"\f023";}
+.fa-plus:before {content:"\f067";}
+.fa-dashboard:before {content:"\f0e4";}
+.fa-clock:before {content:"\f017";}
+.fa-pause:before {content:"\f04c";}
+/* Add more icons as needed */

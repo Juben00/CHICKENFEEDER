@@ -1,0 +1,5 @@
+{
+    "device_id": "pi_001_user123",
+    "upload_endpoint": "https://yourwebsite.com/api/upload_feed_image",
+    "user_token": "your_user_auth_token_here"
+}

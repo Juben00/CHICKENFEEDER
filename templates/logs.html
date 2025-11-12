@@ -212,7 +212,7 @@
         <div class="card bg-success text-white">
             <div class="card-body text-center">
                 <h3 class="mb-0">{{ logs.items|selectattr('status', 'equalto', 'success')|list|length }}</h3>
-                <small>Successful (this page)</small>
+                <small>Successful</small>
             </div>
         </div>
     </div>
@@ -220,7 +220,7 @@
         <div class="card bg-danger text-white">
             <div class="card-body text-center">
                 <h3 class="mb-0">{{ logs.items|selectattr('status', 'equalto', 'failure')|list|length }}</h3>
-                <small>Failed (this page)</small>
+                <small>Failed</small>
             </div>
         </div>
     </div>
@@ -228,7 +228,7 @@
         <div class="card bg-info text-white">
             <div class="card-body text-center">
                 <h3 class="mb-0">{{ logs.items|sum(attribute='amount_grams') }}g</h3>
-                <small>Total Feed (this page)</small>
+                <small>Total Feed</small>
             </div>
         </div>
     </div>
